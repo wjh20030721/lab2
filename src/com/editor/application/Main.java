@@ -20,7 +20,8 @@ public class Main {
         // 1. 组装应用
         Workspace workspace = Workspace.getInstance();
         LocalFileRepository repo = new LocalFileRepository();
-        CommandFactory factory = new CommandFactory(workspace, repo);
+        Scanner scanner = new Scanner(System.in);
+        CommandFactory factory = new CommandFactory(workspace, repo,scanner);
 
         // 2. 恢复上次关闭的工作区状态 (Memento)
         if (new File(AppConfig.MEMENTO_FILE).exists()) {
@@ -30,8 +31,6 @@ public class Main {
                 if (m.activeFile != null) workspace.setActive(m.activeFile);
             }
         }
-
-        Scanner scanner = new Scanner(System.in);
         System.out.println("Editor Ready. Type 'exit' to quit.");
 
         // 3. 事件循环

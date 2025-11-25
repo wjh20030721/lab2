@@ -2,17 +2,22 @@ package com.editor.application.commands;
 
 import com.editor.interfaces.Command;
 import com.editor.domain.*;
+import com.editor.interfaces.FileRepository;
+
 import java.util.Scanner;
 
 public class CloseCommand implements Command {
     private Workspace workspace;
     private String path;
-    private Scanner scanner; // 需要交互
+    private FileRepository repo; // 需要 Repo 来执行保存
+    private Scanner scanner; // 复用外部 Scanner
 
-    public CloseCommand(Workspace ws, String path) {
+    // 构造函数接收 scanner 和 repo
+    public CloseCommand(Workspace ws, FileRepository repo, String path, Scanner scanner) {
         this.workspace = ws;
+        this.repo = repo;
         this.path = path;
-        this.scanner = new Scanner(System.in);
+        this.scanner = scanner;
     }
 
     @Override
@@ -29,9 +34,12 @@ public class CloseCommand implements Command {
             System.out.print("File modified. Save? (y/n): ");
             String choice = scanner.nextLine().trim();
             if ("y".equalsIgnoreCase(choice)) {
-                // 触发保存逻辑 (这里可以复用 SaveCommand 或直接调用 Repo，为了简单直接调用 Workspace 逻辑)
-                System.out.println("Please run 'save' command manually."); // 简化处理，或注入 Repo 执行保存
-                return; // 中断关闭
+                // [修复] 真正执行保存
+                new SaveCommand(target, repo).execute();
+                // 保存后继续执行下面的关闭逻辑
+            } else {
+                // 如果选 n，直接关闭（丢弃修改）；
+                // 如果选了其他奇怪的键（如取消），可能需要 return
             }
         }
 

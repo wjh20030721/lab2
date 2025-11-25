@@ -4,6 +4,8 @@ import com.editor.application.commands.*;
 import com.editor.domain.*;
 import com.editor.interfaces.*;
 import com.editor.common.exception.EditorException;
+
+import java.util.Scanner;
 import java.util.regex.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -11,10 +13,12 @@ import java.util.List;
 public class CommandFactory {
     private Workspace workspace;
     private FileRepository repo;
+    private Scanner scanner;
 
-    public CommandFactory(Workspace workspace, FileRepository repo) {
+    public CommandFactory(Workspace workspace, FileRepository repo,Scanner scanner) {
         this.workspace = workspace;
         this.repo = repo;
+        this.scanner = scanner;
     }
 
     public Command createCommand(String inputLine) {
@@ -58,7 +62,7 @@ public class CommandFactory {
             case "close":
                 String fileToClose = parts.size() > 1 ? parts.get(1) : (active != null ? active.getPath() : null);
                 if (fileToClose == null) throw new EditorException("No file to close");
-                return new CloseCommand(workspace, fileToClose);
+                return new CloseCommand(workspace, repo, fileToClose, scanner);
             case "editor-list":
                 return new EditorListCommand(workspace);
             case "dir-tree":
