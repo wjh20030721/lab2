@@ -1,6 +1,0 @@
-# log
-hello,world
-adas
-ttt
-tttt
-xaxa
