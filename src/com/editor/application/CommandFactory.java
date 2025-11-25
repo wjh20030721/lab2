@@ -104,7 +104,24 @@ public class CommandFactory {
                 return new LogControlCommand(active, "off");
             case "log-show":
                 return new LogControlCommand(active, "show");
+            case "edit":
+                if (parts.size() < 2) throw new EditorException("Missing filename");
+                String targetFile = parts.get(1);
 
+                // 返回一个匿名 Command (或者 Lambda)
+                return () -> {
+                    // 1. 检查文件是否已打开 (复用 Workspace 查找逻辑，或者直接利用 setActive 的静默失败特性)
+                    // 但为了打印错误提示，我们需要先检查
+                    boolean exists = workspace.getAllEditors().stream()
+                            .anyMatch(e -> e.getPath().equals(targetFile));
+
+                    if (!exists) {
+                        System.out.println("File not open: " + targetFile);
+                    } else {
+                        workspace.setActive(targetFile);
+                        System.out.println("Switched to: " + targetFile);
+                    }
+                };
             default:
                 throw new EditorException("Unknown command: " + action);
         }
