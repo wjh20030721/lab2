@@ -24,9 +24,11 @@ public class LoadCommand implements Command {
         List<String> lines = repo.readLines(path);
 
         // 2. 组装 Domain 对象
+        // 文件加载之后产生一个 TextEditor 实例作为一个编辑器页面，管理对这个文件的编辑
         TextEditor editor = new TextEditor(path, lines);
 
-        // 3. 配置 Observer (Log)
+        // 3. 配置 Observer (Log)，将日志观察者注册到编辑器
+        // 但这个不意味着
         if (!lines.isEmpty() && lines.get(0).trim().equals("# log")) {
             editor.attach(new FileLogger(path));
         }

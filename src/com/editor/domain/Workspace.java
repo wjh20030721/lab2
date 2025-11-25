@@ -50,4 +50,17 @@ public class Workspace {
             this.activeEditor = editorMap.get(path);
         }
     }
+
+    // 在 Workspace 类中添加
+    public void close(String path) {
+        editorMap.remove(path); //
+        // 如果关闭的是当前文件，切换到最近的一个（简单策略：取第一个）
+        if (activeEditor != null && activeEditor.getPath().equals(path)) {
+            if (!editorMap.isEmpty()) {
+                activeEditor = editorMap.values().iterator().next();
+            } else {
+                activeEditor = null;
+            }
+        }
+    }
 }

@@ -2,9 +2,8 @@ package com.editor.domain;
 
 import com.editor.interfaces.*;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Stack;
+import java.util.*;
+import com.editor.common.exception.EditorException;
 
 //管理 List<String> 和 Undo栈
 public class TextEditor implements Editor {
@@ -16,6 +15,7 @@ public class TextEditor implements Editor {
     private Stack<UndoableCommand> undoStack = new Stack<>();
     private Stack<UndoableCommand> redoStack = new Stack<>();
 
+    // 观察者列表
     private List<EditorObserver> observers = new ArrayList<>();
 
     //设置编辑器路径并对传入的初始行做保护性拷贝（若为 null 则使用空列表），初始化内部内容列表
@@ -32,18 +32,54 @@ public class TextEditor implements Editor {
         markModified("append");
     }
 
-    //在指定行的指定列插入文本。若目标行不存在则扩展到该行（以空字符串填充）。
-    // 若列索引超出当前行长度则插入到行尾。更新该行内容并调用 markModified("insert")
+    // 插入逻辑
     public void insert(int lineIdx, int colIdx, String text) {
-        // 简化逻辑：确保容量
-        while(lines.size() <= lineIdx) lines.add("");
-
+        ensureCapacity(lineIdx);
         String line = lines.get(lineIdx);
-        if (colIdx > line.length()) colIdx = line.length(); // 简单容错
+
+        // 边界检查
+        if (colIdx > line.length()) throw new EditorException("Column out of bounds");
 
         String newLine = line.substring(0, colIdx) + text + line.substring(colIdx);
         lines.set(lineIdx, newLine);
         markModified("insert");
+    }
+
+    // 删除逻辑
+    public void delete(int lineIdx, int colIdx, int len) {
+        if (lineIdx >= lines.size()) throw new EditorException("Line number out of bounds");
+        String line = lines.get(lineIdx);
+
+        // 边界检查：删除长度不可超出行尾
+        if (colIdx + len > line.length()) {
+            throw new EditorException("Delete length exceeds line end");
+        }
+
+        String newLine = line.substring(0, colIdx) + line.substring(colIdx + len);
+        lines.set(lineIdx, newLine);
+        markModified("delete");
+    }
+
+    // 替换逻辑：组合删除和插入，或者直接操作
+    public void replace(int lineIdx, int colIdx, int len, String text) {
+        delete(lineIdx, colIdx, len);
+        insert(lineIdx, colIdx, text);
+        // 注意：这里可能会触发两次 notify，如果介意可以单独写逻辑
+    }
+
+    // 获取指定位置的文本（用于 Undo 时恢复删除的内容）
+    public String getTextSegment(int lineIdx, int colIdx, int len) {
+        if (lineIdx >= lines.size()) return "";
+        String line = lines.get(lineIdx);
+        if (colIdx + len > line.length()) return line.substring(colIdx);
+        return line.substring(colIdx, colIdx + len);
+    }
+
+    // 辅助方法：扩容
+    private void ensureCapacity(int targetIndex) {
+        while (lines.size() <= targetIndex) {
+            lines.add("");
+        }
     }
 
     //删除指定索引的一行（在索引合法时），并调用 markModified("delete line")
