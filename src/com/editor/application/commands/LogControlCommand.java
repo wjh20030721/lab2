@@ -20,16 +20,15 @@ public class LogControlCommand implements Command {
         if (editor == null) { System.out.println("No active editor"); return; }
 
         switch (action) {
-            case "on": //
-                editor.attach(new FileLogger(editor.getPath()));
-                System.out.println("Logging enabled for " + editor.getPath());
+            case "on":
+                // 使用接口方法：去重挂载
+                editor.attachUnique(new FileLogger(editor.getPath()));
+                System.out.println("Logging enabled.");
                 break;
-            case "off": //
-                // 实际需要找到对应的 Logger 对象并 detach。
-                // 简化实现：清空所有 observer 或者在 Editor 中实现按类型移除
-                // 这里假设我们简单地把 Logger 作为唯一 Observer 移除
-                // (更完善的实现需要在 Editor 里管理 Observer Map)
-                System.out.println("Logging disabled (implementation pending detach logic)");
+            case "off":
+                // 使用接口方法：按类型移除 FileLogger
+                editor.detach(FileLogger.class);
+                System.out.println("Logging disabled.");
                 break;
             case "show": //
                 String logPath = "." + editor.getPath() + ".log";

@@ -241,6 +241,19 @@ public class TextEditor implements Editor {
     @Override
     public void attach(EditorObserver observer) { observers.add(observer); }
 
+    //这个方法耦合性太高了，解了耦合以后，就废弃了
+//    // [新增 1] 安全挂载 Logger：防止重复添加
+//    public void attachLogger(EditorObserver observer) {
+//        // 检查观察者列表中是否已经存在相同类型(class)的观察者
+//        boolean exists = observers.stream()
+//                .anyMatch(o -> o.getClass().equals(observer.getClass()));
+//
+//        // 只有不存在时才添加
+//        if (!exists) {
+//            observers.add(observer);
+//        }
+//    }
+
     //注销一个观察者（从 observers 列表移除）
     @Override
     public void detach(EditorObserver observer) { observers.remove(observer); }
@@ -264,4 +277,20 @@ public class TextEditor implements Editor {
     //设置 modified 标志（外部可用以手动清除或标记修改状态）
     @Override
     public void setModified(boolean m) { this.modified = m; }
+
+    @Override
+    public void attachUnique(EditorObserver observer) {
+        // 检查是否存在同类观察者
+        boolean exists = observers.stream()
+                .anyMatch(o -> o.getClass().equals(observer.getClass()));
+        if (!exists) {
+            observers.add(observer);
+        }
+    }
+
+    @Override
+    public void detach(Class<? extends EditorObserver> type) {
+        // 移除所有指定类型的观察者
+        observers.removeIf(o -> type.isInstance(o));
+    }
 }
