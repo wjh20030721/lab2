@@ -143,6 +143,11 @@ public class CommandFactory {
         Matcher m = Pattern.compile("([^\"]\\S*|\".+?\")\\s*").matcher(input);
         while (m.find()) {
             String s = m.group(1).replace("\"", ""); // 去除引号
+
+            // [新增] 处理转义字符：把用户输入的字面量 "\n" 变成真正的换行符
+            s = s.replace("\\n", "\n");
+            // 如果还需要支持 tab，可以加: s = s.replace("\\t", "\t");
+
             list.add(s);
         }
         return list;

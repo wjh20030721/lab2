@@ -30,27 +30,89 @@ public class TextEditor implements Editor {
     // --- 纯内存业务逻辑 ---
     //在内容末尾追加一行（把 text 当作一行添加到 lines），并调用 markModified("append") 标记为已修改并通知观察者。
     public void append(String text) {
-        lines.add(text);
+        if (text.contains("\n")) {
+            // 使用 -1 参数防止末尾空行被吞 (例如 "A\n" -> ["A", ""])
+            String[] parts = text.split("\n", -1);
+            for (String part : parts) {
+                lines.add(part);
+            }
+        } else {
+            lines.add(text);
+        }
         markModified("append");
     }
-
     // 插入逻辑
     public void insert(int lineIdx, int colIdx, String text) {
-        ensureCapacity(lineIdx);
+        // 1. [修复] 空文件检查
+        if (lines.isEmpty()) {
+            if (lineIdx != 0 || colIdx != 0) {
+                throw new EditorException("空文件只能在1:1位置插入");
+            }
+            // 空文件插入时需要初始化一行
+            lines.add("");
+        }
+
+        // 2. [修复] 行号越界检查 (禁止自动扩容)
+        // 允许在最后一行之后紧接着插入(追加行)，即 lineIdx == lines.size() 是合法的
+        // 但不允许跳行插入，即 lineIdx > lines.size() 是非法的
+        if (lineIdx > lines.size()) {
+            throw new EditorException("行号越界");
+        }
+
+        // 如果是追加新行，先填一个空串占位，防止 get(lineIdx) 越界
+        if (lineIdx == lines.size()) {
+            lines.add("");
+        }
+
         String line = lines.get(lineIdx);
 
-        // 边界检查
-        if (colIdx > line.length()) throw new EditorException("Column out of bounds");
+        // 3. 列号越界检查 (保持原样)
+        if (colIdx > line.length()) {
+            throw new EditorException("列号越界");
+        }
+//        ensureCapacity(lineIdx);
 
-        String newLine = line.substring(0, colIdx) + text + line.substring(colIdx);
-        lines.set(lineIdx, newLine);
+//        if (colIdx > line.length()) throw new EditorException("Column out of bounds");
+
+        // 如果不含换行，走老逻辑（效率高一点）
+        if (!text.contains("\n")) {
+            String newLine = line.substring(0, colIdx) + text + line.substring(colIdx);
+            lines.set(lineIdx, newLine);
+        } else {
+            // 1. 拆分插入文本
+            String[] parts = text.split("\n", -1);
+
+            // 2.以此点为界，保存原行内容的“前半截”和“后半截”
+            String prefix = line.substring(0, colIdx);
+            String suffix = line.substring(colIdx);
+
+            // 3. 修改当前行 = 原前半截 + 插入文本的第一段
+            lines.set(lineIdx, prefix + parts[0]);
+
+            // 4. 插入中间的行 (如果有)
+            // 注意：每次插入后，list大小变了，后续插入位置要跟着变
+            for (int i = 1; i < parts.length - 1; i++) {
+                lines.add(lineIdx + i, parts[i]);
+            }
+
+            // 5. 插入最后一行 = 插入文本的最后一段 + 原后半截
+            // 只有当 parts 长度 > 1 时才需要这一步，否则都在第3步处理了
+            if (parts.length > 1) {
+                lines.add(lineIdx + parts.length - 1, parts[parts.length - 1] + suffix);
+            }
+        }
         markModified("insert");
     }
 
-    // 删除逻辑
+    // 删除逻辑(不支持跨行)
     public void delete(int lineIdx, int colIdx, int len) {
         if (lineIdx >= lines.size()) throw new EditorException("Line number out of bounds");
         String line = lines.get(lineIdx);
+
+        // 2. [新增] 纯粹的列号越界检查 (更精准的提示)
+        if (colIdx > line.length()) {
+            throw new EditorException("Column out of bounds");
+        }
 
         // 边界检查：删除长度不可超出行尾
         if (colIdx + len > line.length()) {
@@ -62,6 +124,38 @@ public class TextEditor implements Editor {
         markModified("delete");
     }
 
+    // [新增] 通用区间删除方法，支持跨行（为了undo和redo）
+    // startLine/startCol: 删除起始位置
+    // endLine/endCol: 删除结束位置（不包含该位置字符）
+    public void deleteRange(int startLine, int startCol, int endLine, int endCol) {
+        if (startLine >= lines.size() || endLine >= lines.size())
+            throw new EditorException("Line range out of bounds");
+
+        String startLineText = lines.get(startLine);
+        String endLineText = lines.get(endLine);
+
+        // 1. 获取保留的前缀（第一行被删处之前的内容）
+        String prefix = startLineText.substring(0, startCol);
+
+        // 2. 获取保留的后缀（最后一行被删处之后的内容）
+        // 注意检查越界，虽然理论上由 Command 保证正确性
+        String suffix = "";
+        if (endCol < endLineText.length()) {
+            suffix = endLineText.substring(endCol);
+        }
+
+        // 3. 合并：将后缀拼接到前缀后面，更新到起始行
+        lines.set(startLine, prefix + suffix);
+
+        // 4. 删除中间的行（包括原来的 endLine）
+        // 注意：要从后往前删，或者每次都删 startLine + 1，删 endLine - startLine 次
+        int linesToRemove = endLine - startLine;
+        for (int i = 0; i < linesToRemove; i++) {
+            lines.remove(startLine + 1);
+        }
+
+        markModified("delete range");
+    }
     // 替换逻辑：组合删除和插入，或者直接操作
     public void replace(int lineIdx, int colIdx, int len, String text) {
         delete(lineIdx, colIdx, len);
@@ -77,12 +171,12 @@ public class TextEditor implements Editor {
         return line.substring(colIdx, colIdx + len);
     }
 
-    // 辅助方法：扩容
-    private void ensureCapacity(int targetIndex) {
-        while (lines.size() <= targetIndex) {
-            lines.add("");
-        }
-    }
+//    // 辅助方法：扩容
+//    private void ensureCapacity(int targetIndex) {
+//        while (lines.size() <= targetIndex) {
+//            lines.add("");
+//        }
+//    }
 
     //删除指定索引的一行（在索引合法时），并调用 markModified("delete line")
     public void removeLine(int index) {
@@ -165,7 +259,9 @@ public class TextEditor implements Editor {
     public List<String> getContent() { return lines; }
 
     //返回当前的已修改标志 modified
+    @Override
     public boolean isModified() { return modified; }
     //设置 modified 标志（外部可用以手动清除或标记修改状态）
+    @Override
     public void setModified(boolean m) { this.modified = m; }
 }

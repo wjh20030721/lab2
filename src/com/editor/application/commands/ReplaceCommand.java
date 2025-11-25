@@ -30,8 +30,21 @@ public class ReplaceCommand implements UndoableCommand {
 
     @Override
     public void undo() {
-        // 撤销替换 = 把新文本删掉，把旧文本插回去
-        editor.delete(line, col, newText.length());
+        // [修复] 使用 deleteRange 处理可能包含换行的新文本
+        if (newText.contains("\n")) {
+            // 计算多行文本的结束位置
+            String[] parts = newText.split("\n", -1);
+            int endLine = line + parts.length - 1;
+            int endCol = parts[parts.length - 1].length();
+
+            // 1. 先删掉新插入的（多行）文本
+            editor.deleteRange(line, col, endLine, endCol);
+        } else {
+            // 单行情况，用老方法即可
+            editor.delete(line, col, newText.length());
+        }
+
+        // 2. 把旧文本（原本就在一行里）插回去
         editor.insert(line, col, oldText);
     }
 }

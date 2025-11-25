@@ -6,4 +6,6 @@ public interface Editor {
     List<String> getContent();
     void attach(EditorObserver observer);
     void detach(EditorObserver observer);
+    boolean isModified();
+    void setModified(boolean m);
 }
