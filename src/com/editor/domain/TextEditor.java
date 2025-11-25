@@ -10,6 +10,8 @@ public class TextEditor implements Editor {
     private String path;
     private List<String> lines;
     private boolean modified = false;
+    // 增加一个标记位，用来指示当前是否正在执行 redo 操作
+    private boolean isRedoing = false;
 
     // 独立的撤销栈
     private Stack<UndoableCommand> undoStack = new Stack<>();
@@ -100,7 +102,12 @@ public class TextEditor implements Editor {
     //将可撤销命令压入 undoStack，并清空 redoStack（新操作后无法再重做旧的重做栈）
     public void pushUndo(UndoableCommand cmd) {
         undoStack.push(cmd);
-        redoStack.clear();
+
+        // 关键修复：只有当是"新操作"(非重做)时，才清空 redoStack
+        // 如果是 redo 触发的 execute() -> pushUndo()，则保留 redoStack 里的其他命令
+        if (!isRedoing) {
+            redoStack.clear();
+        }
     }
 
     //如果 undoStack 非空，弹出栈顶命令并调用其 undo() 方法，再将该命令推入 redoStack（支持重做）
@@ -113,11 +120,25 @@ public class TextEditor implements Editor {
     }
 
     //如果 redoStack 非空，弹出栈顶命令并调用其 execute() 方法，再将该命令推入 undoStack（恢复到可撤销状态）
+    // 修改redo 方法
     public void redo() {
         if (!redoStack.isEmpty()) {
             UndoableCommand cmd = redoStack.pop();
-            cmd.execute();
-            undoStack.push(cmd);
+
+            try {
+                // 标记状态：告诉 pushUndo 这是一个重做操作，不要清空 redoStack
+                isRedoing = true;
+
+                // 执行命令 (execute 内部会调用 pushUndo，从而把命令放回 undoStack)
+                cmd.execute();
+            } finally {
+                // 还原状态
+                isRedoing = false;
+            }
+
+            // undoStack.push(cmd);
+            // 删掉，因为 cmd.execute() -> pushUndo() 已经把命令压入 undoStack 了。
+            // 如果保留，会导致同一个命令在 undoStack 里出现两次。
         }
     }
 
