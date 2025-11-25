@@ -37,6 +37,23 @@ public class CommandFactory {
                     return () -> workspace.getAllEditors().forEach(e ->
                             new SaveCommand(e, repo).execute());
                 }
+                // 处理 save <filename>
+                if (parts.size() > 1) {
+                    String targetName = parts.get(1);
+                    // 在工作区查找指定名称的编辑器
+                    TextEditor targetEditor = (TextEditor) workspace.getAllEditors().stream()
+                            .filter(e -> e.getPath().equals(targetName))
+                            .findFirst()
+                            .orElse(null);
+
+                    if (targetEditor == null) {
+                        // 如果没找到（没 load），抛出异常或打印错误
+                        throw new EditorException("File not found in workspace: " + targetName);
+                    }
+                    return new SaveCommand(targetEditor, repo);
+                }
+                // 保存当前活动文件
+                if (active == null) throw new EditorException("No active file to save");
                 return new SaveCommand(active, repo);
             case "close":
                 String fileToClose = parts.size() > 1 ? parts.get(1) : (active != null ? active.getPath() : null);
