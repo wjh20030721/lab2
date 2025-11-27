@@ -5,6 +5,7 @@ import com.editor.common.config.AppConfig;
 import com.editor.common.exception.EditorException;
 import com.editor.domain.TextEditor;
 import com.editor.domain.Workspace;
+import com.editor.domain.statistics.TimeTracker;
 import com.editor.infrastructure.memento.WorkspaceMemento;
 import com.editor.infrastructure.persistence.LocalFileRepository;
 import com.editor.interfaces.Command;
@@ -22,6 +23,10 @@ public class Main {
         LocalFileRepository repo = new LocalFileRepository();
         Scanner scanner = new Scanner(System.in);
         CommandFactory factory = new CommandFactory(workspace, repo,scanner);
+
+        // 核心解耦点：注册统计模块观察者
+        // 这样 Workspace 依然不知道 TimeTracker 的存在，只知道发通知
+        workspace.addObserver(TimeTracker.getInstance());
 
         // 2. 恢复上次关闭的工作区状态 (Memento)
         if (new File(AppConfig.MEMENTO_FILE).exists()) {
@@ -73,20 +78,21 @@ public class Main {
 
     // 新增：退出检查逻辑
     // 这里的逻辑是：遍历所有文件 -> 发现未保存 -> 问用户 -> 用户定 -> (保存/跳过) -> 继续下一个 -> 最后一定返回
+    // 新增：退出检查逻辑
     private static void performExitChecks(Workspace workspace, FileRepository repo, Scanner scanner) {
         for (Editor e : workspace.getAllEditors()) {
-            TextEditor editor = (TextEditor) e;
+            // [修复] 删除这行强制转换: TextEditor editor = (TextEditor) e;
+            // 直接使用接口引用 e 即可，因为 isModified() 和 getPath() 都在 Editor 接口里
+
             // 只处理已修改的文件
-            if (editor.isModified()) {
-                System.out.print("File '" + editor.getPath() + "' is modified. Save before exit? (y/n): ");
+            if (e.isModified()) {
+                System.out.print("File '" + e.getPath() + "' is modified. Save before exit? (y/n): ");
                 String choice = scanner.nextLine().trim().toLowerCase();
 
-                // 只有用户明确输入 y 才保存，其他情况（n 或直接回车）都视为放弃修改
-                // 这符合“保存与否由用户决定”
+                // 只有用户明确输入 y 才保存
                 if ("y".equals(choice)) {
-                    // 这里由 Main 调度 SaveCommand，解决了 Exit 依赖 Save 的问题
-                    // Main 本身就依赖 SaveCommand，所以这里没有引入新的不合理依赖
-                    new SaveCommand(editor, repo).execute();
+                    // SaveCommand 的构造函数已经支持 Editor 接口，直接传入 e 即可
+                    new SaveCommand(e, repo).execute();
                 }
             }
         }

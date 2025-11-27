@@ -19,21 +19,28 @@ public class LoadCommand implements Command {
 
     @Override
     public void execute() {
-        // 1. Infra 读数据
+        // 1. 读取文件
         if (!repo.exists(path)) repo.createEmpty(path);
         List<String> lines = repo.readLines(path);
 
-        // 2. 组装 Domain 对象
-        // 文件加载之后产生一个 TextEditor 实例作为一个编辑器页面，管理对这个文件的编辑
-        TextEditor editor = new TextEditor(path, lines);
-
-        // 3. 配置 Observer (Log)，将日志观察者注册到编辑器
-        // 但这个不意味着
-        if (!lines.isEmpty() && lines.get(0).trim().equals("# log")) {
-            editor.attach(new FileLogger(path));
+        // 2. 创建编辑器 (Text/XML 判断逻辑)
+        Editor editor;
+        if (path.endsWith(".xml")) {
+            editor = new XmlEditor(path, lines);
+        } else {
+            editor = new TextEditor(path, lines);
         }
 
-        // 4. 注册到 Workspace
+        // 3. [修改] 配置 Log，传入第一行作为配置参数
+        if (!lines.isEmpty() && lines.get(0).trim().startsWith("# log")) {
+            // 传入 lines.get(0) 以便 Logger 解析 -e 参数
+            editor.attach(new FileLogger(path, lines.get(0)));
+        }
+
+        // 在挂载完 Logger 后，立即触发加载日志
+        editor.onLoad();
+
+        // 4. 注册
         workspace.register(editor);
         System.out.println("Loaded: " + path);
     }

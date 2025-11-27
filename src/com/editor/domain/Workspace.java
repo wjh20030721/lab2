@@ -1,10 +1,10 @@
 package com.editor.domain;
 
+//import com.editor.domain.statistics.TimeTracker;
 import com.editor.interfaces.Editor;
+import com.editor.interfaces.WorkspaceObserver; // [新增] 引入接口
 
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 
 public class Workspace {
     // 单例模式
@@ -28,26 +28,54 @@ public class Workspace {
     private Map<String, Editor> editorMap = new LinkedHashMap<>();
     private Editor activeEditor;    //当前激活的编辑器
 
+    // 观察者列表
+    // 使用 CopyOnWriteArrayList 防止遍历时修改抛出异常（虽然后续 Main 是单线程，但这更安全）
+    private List<WorkspaceObserver> observers = new ArrayList<>();
 
     private Workspace() {}
 
     //私有构造函数，防止外部用 new 创建 Workspace 实例。
     public static Workspace getInstance() { return INSTANCE; }
 
+    // 注册观察者的方法
+    public void addObserver(WorkspaceObserver observer) {
+        observers.add(observer);
+    }
+
     // 注册新的编辑器，并将其设为当前激活编辑器
     public void register(Editor editor) {
         editorMap.put(editor.getPath(), editor);
         this.activeEditor = editor;
+        // 注册新文件时，通常也视为切换到了新文件，需要通知
+        notifyObservers(editor.getPath());
     }
     //get当前激活的编辑器
     public Editor getActiveEditor() { return activeEditor; }
     //获取所有已打开的编辑器集合
     public Collection<Editor> getAllEditors() { return editorMap.values(); }
 
-    //设置当前激活的编辑器，通过路径查找
+    // 设置当前激活的编辑器
     public void setActive(String path) {
         if (editorMap.containsKey(path)) {
             this.activeEditor = editorMap.get(path);
+
+//            // 通知统计模块切换了文件
+//            TimeTracker.getInstance().switchFile(path);
+            // 不再直接调用 TimeTracker，而是通知观察者
+            notifyObservers(path);
+        }
+    }
+
+    // 通知逻辑
+    private void notifyObservers(String path) {
+        for (WorkspaceObserver observer : observers) {
+            try {
+                observer.onActiveFileChanged(path);
+            } catch (Exception e) {
+                // [修复] 捕获所有异常，仅打印警告，确保循环继续，且不影响 Workspace 主逻辑
+                System.err.println("Warning: Observer failed to update: " + e.getMessage());
+                // e.printStackTrace(); // 可选：调试时打开
+            }
         }
     }
 
@@ -58,8 +86,23 @@ public class Workspace {
         if (activeEditor != null && activeEditor.getPath().equals(path)) {
             if (!editorMap.isEmpty()) {
                 activeEditor = editorMap.values().iterator().next();
+                // 关闭并切换后，也需要通知
+                notifyObservers(activeEditor.getPath());
             } else {
                 activeEditor = null;
+            }
+        }
+    }
+    // 用于在“另存为”时更新 Map 索引
+    public void renameEditor(String oldPath, String newPath) {
+        if (editorMap.containsKey(oldPath)) {
+            Editor editor = editorMap.remove(oldPath); // 移除旧 Key
+            editor.setPath(newPath);                   // 更新 Editor 内部状态
+            editorMap.put(newPath, editor);            // 放入新 Key
+
+            // 如果它是活动文件，更新 activeEditor 引用（虽然引用没变，但为了保险）
+            if (activeEditor == editor) {
+                activeEditor = editor;
             }
         }
     }

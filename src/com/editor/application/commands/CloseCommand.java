@@ -2,6 +2,7 @@ package com.editor.application.commands;
 
 import com.editor.interfaces.Command;
 import com.editor.domain.*;
+import com.editor.interfaces.Editor; // [修改] 引入接口
 import com.editor.interfaces.FileRepository;
 
 import java.util.Scanner;
@@ -9,10 +10,9 @@ import java.util.Scanner;
 public class CloseCommand implements Command {
     private Workspace workspace;
     private String path;
-    private FileRepository repo; // 需要 Repo 来执行保存
-    private Scanner scanner; // 复用外部 Scanner
+    private FileRepository repo;
+    private Scanner scanner;
 
-    // 构造函数接收 scanner 和 repo
     public CloseCommand(Workspace ws, FileRepository repo, String path, Scanner scanner) {
         this.workspace = ws;
         this.repo = repo;
@@ -22,7 +22,8 @@ public class CloseCommand implements Command {
 
     @Override
     public void execute() {
-        TextEditor target = (TextEditor) workspace.getAllEditors().stream()
+        // [修复] 使用 Editor 接口，移除 (TextEditor) 强制转换
+        Editor target = workspace.getAllEditors().stream()
                 .filter(e -> e.getPath().equals(path)).findFirst().orElse(null);
 
         if (target == null) {
@@ -30,18 +31,21 @@ public class CloseCommand implements Command {
             return;
         }
 
+        // isModified() 是 Editor 接口的方法，所以可以直接调用
         if (target.isModified()) {
             System.out.print("File modified. Save? (y/n): ");
             String choice = scanner.nextLine().trim();
             if ("y".equalsIgnoreCase(choice)) {
-                // [修复] 真正执行保存
+                // SaveCommand 的构造函数已经接受 Editor 接口，所以这里也没问题
                 new SaveCommand(target, repo).execute();
-                // 保存后继续执行下面的关闭逻辑
             } else {
-                // 如果选 n，直接关闭（丢弃修改）；
-                // 如果选了其他奇怪的键（如取消），可能需要 return
+                // 如果选 n，直接关闭
             }
         }
+
+        // 在从工作区移除之前，触发关闭日志
+        // 这样 Logger 还能收到最后一条消息
+        target.onClose();
 
         workspace.close(path);
         System.out.println("Closed: " + path);

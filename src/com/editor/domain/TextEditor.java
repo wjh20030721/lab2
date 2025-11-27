@@ -293,4 +293,29 @@ public class TextEditor implements Editor {
         // 移除所有指定类型的观察者
         observers.removeIf(o -> type.isInstance(o));
     }
+
+    @Override
+    public void setPath(String newPath) {
+        this.path = newPath;
+    }
+    // 复用已有的通知逻辑
+    @Override
+    public void onSave() {
+        // save 不会改变 modified 为 true，所以不能调 markModified
+        // 直接调用 notifyObservers
+        notifyObservers("save");
+    }
+    @Override
+    public void onClose() {
+        // 通知日志观察者记录 "close"
+        notifyObservers("close");
+    }
+
+    @Override
+    public void onLoad() {
+        // 通知日志观察者记录 "load filename"
+        // 注意：Log 格式要求是 "load lab.txt"，所以这里最好带上文件名
+        // 或者直接传 "load " + this.path
+        notifyObservers("load " + this.path);
+    }
 }

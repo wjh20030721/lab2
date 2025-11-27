@@ -20,10 +20,13 @@ public class SaveCommand implements Command {
             // 1. 执行 IO 写操作
             repo.writeLines(editor.getPath(), editor.getContent());
 
-            // 2. [修复] 调用接口方法清除修改标记
+            // 2. 调用接口方法清除修改标记
             // 以前这里需要强转 ((TextEditor)editor).setModified(false)
             // 现在不需要了，因为 setModified 已经是 Editor 接口的一部分
             editor.setModified(false);
+
+            // 3. 触发保存事件通知，让日志模块记录 "save"
+            editor.onSave();
 
             System.out.println("Saved: " + editor.getPath());
         }
