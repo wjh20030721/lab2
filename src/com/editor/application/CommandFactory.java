@@ -3,6 +3,7 @@ package com.editor.application;
 import com.editor.application.commands.*;
 import com.editor.domain.*;
 import com.editor.domain.xml.*;
+import com.editor.infrastructure.spellcheck.LanguageToolHttpAdapter;
 import com.editor.infrastructure.spellcheck.MockSpellChecker;
 import com.editor.interfaces.*;
 import com.editor.common.exception.EditorException;
@@ -18,8 +19,8 @@ public class CommandFactory {
     private Scanner scanner;
 
     // 可以在工厂里持有一个 SpellChecker 实例（单例或每次new都可以）
-    private SpellChecker spellChecker = new MockSpellChecker();
-
+//    private SpellChecker spellChecker = new MockSpellChecker();
+    private SpellChecker spellChecker = new LanguageToolHttpAdapter();
     public CommandFactory(Workspace workspace, FileRepository repo,Scanner scanner) {
         this.workspace = workspace;
         this.repo = repo;
