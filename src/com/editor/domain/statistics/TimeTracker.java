@@ -46,6 +46,8 @@ public class TimeTracker implements WorkspaceObserver {
     }
 
     // 停止当前计时（用于关闭文件或退出程序时结算）
+    // 但前的设计中并没有调用这个方法的地方，可以视为预留
+    // 因为，文档中提到了，工作区状态恢复不会恢复编辑时长，每次重新启动都是新的计时，也就是不需要持久化
     public void stop() {
         if (currentFilePath != null && startTime != null) {
             long seconds = Duration.between(startTime, LocalDateTime.now()).getSeconds();

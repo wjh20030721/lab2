@@ -29,7 +29,7 @@ public class Workspace {
     private Editor activeEditor;    //当前激活的编辑器
 
     // 观察者列表
-    // 使用 CopyOnWriteArrayList 防止遍历时修改抛出异常（虽然后续 Main 是单线程，但这更安全）
+    // 使用 CopyOnWriteArrayList 防止遍历时修改抛出异常（虽然后续 Main 是单线程，但这更安全。所以其实只有一个观察者）
     private List<WorkspaceObserver> observers = new ArrayList<>();
 
     private Workspace() {}

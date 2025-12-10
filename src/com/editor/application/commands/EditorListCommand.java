@@ -1,5 +1,6 @@
 package com.editor.application.commands;
 
+import com.editor.domain.decorator.TimeDisplayDecorator;
 import com.editor.interfaces.Command;
 import com.editor.domain.*;
 import com.editor.interfaces.Editor;
@@ -15,22 +16,18 @@ public class EditorListCommand implements Command {
     @Override
     public void execute() {
         Editor active = workspace.getActiveEditor();
+
         for (Editor e : workspace.getAllEditors()) {
             String prefix = (e == active) ? "> " : "  ";
-            String suffix = e.isModified() ? "*" : "";
 
-            // [Lab2] 获取时长字符串
-//            String timeStr = " (" + TimeTracker.getInstance().getFormattedDuration(e.getPath()) + ")";
-            String timeStr = "";
-            try {
-                // 就算这里报错，也不应该影响文件名列表的打印
-                timeStr = " (" + TimeTracker.getInstance().getFormattedDuration(e.getPath()) + ")";
-            } catch (Exception ex) {
-                // 统计模块挂了，哪怕显示成空字符串，也不能让 editor-list 命令崩溃
-                System.err.println("Warning: Failed to retrieve stats for " + e.getPath());
-            }
+            // --- 核心修改：使用装饰器 ---
 
-            System.out.println(prefix + e.getPath() + suffix + timeStr);
+            // 1. 将普通的 Editor 包装成“带时间显示的 Editor”
+            Editor decoratedEditor = new TimeDisplayDecorator(e);
+
+            // 2. 调用装饰后的方法获取显示名称
+            // 此时它会自动带上时长信息
+            System.out.println(prefix + decoratedEditor.getDisplayName());
         }
     }
 }

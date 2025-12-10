@@ -24,4 +24,10 @@ public interface Editor {
 
     // [可选] 用于触发加载事件通知
     void onLoad();
+
+    // [新增] 用于获取在列表中显示的名称
+    // 默认实现：只返回路径 + 修改标记
+    default String getDisplayName() {
+        return getPath() + (isModified() ? "*" : "");
+    }
 }

@@ -174,7 +174,6 @@ public class CommandFactory {
 
                 // --- XML Commands ---
             case "xml-tree":
-                // 假设你已经创建了 XmlTreeCommand
                 return requireXmlEditor(active, editor -> new XmlTreeCommand(editor));
             case "insert-before":
                 // 参数检查: 命令名 + 3个必填参数 = 4 parts
