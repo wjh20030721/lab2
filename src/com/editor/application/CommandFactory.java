@@ -174,7 +174,31 @@ public class CommandFactory {
 
                 // --- XML Commands ---
             case "xml-tree":
-                return requireXmlEditor(active, editor -> new XmlTreeCommand(editor));
+                XmlEditor targetXmlEditor = null; // 声明最终要用的变量
+
+                // 情况 1: 用户指定了文件名 "xml-tree test.xml"
+                if (parts.size() > 1) {
+                    String targetPath = parts.get(1);
+
+                    // --- 修改点：变量名从 'e' 改为 'foundEditor' ---
+                    Editor foundEditor = workspace.getAllEditors().stream()
+                            .filter(ed -> ed.getPath().equals(targetPath))
+                            .findFirst()
+                            .orElse(null);
+
+                    if (foundEditor == null) throw new EditorException("File not open: " + targetPath);
+                    if (!(foundEditor instanceof XmlEditor)) throw new EditorException("Not an XML file: " + targetPath);
+                    targetXmlEditor = (XmlEditor) foundEditor;
+                }
+                // 情况 2: 没指定，默认用当前激活的
+                else {
+                    if (active instanceof XmlEditor) {
+                        targetXmlEditor = (XmlEditor) active;
+                    } else {
+                        throw new EditorException("Current file is not XML.");
+                    }
+                }
+                return new XmlTreeCommand(targetXmlEditor);
             case "insert-before":
                 // 参数检查: 命令名 + 3个必填参数 = 4 parts
                 if (parts.size() < 4) {
