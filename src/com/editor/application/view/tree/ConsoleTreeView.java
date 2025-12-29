@@ -16,7 +16,7 @@ public class ConsoleTreeView {
         printNode(root, "", true);
     }
 
-
+    public void test(){}
 
     // 递归打印逻辑
     private void printNode(TreeNode node, String prefix, boolean isLast) {
