@@ -1,6 +1,5 @@
 package com.editor.domain.statistics;
 
-import com.editor.infrastructure.memento.WorkspaceMemento;
 import com.editor.interfaces.WorkspaceObserver;
 
 import java.time.Duration;
