@@ -6,7 +6,7 @@ import java.util.List;
  * 通用树形视图渲染器
  * 负责将任何实现了 TreeNode 接口的结构打印到控制台
  */
-public class ConsoleTreeView {
+public class Console_TreeView {
 
     public void print(TreeNode root) {
         if (root == null) return;
