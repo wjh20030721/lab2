@@ -1,5 +1,8 @@
 package com.editor.application.commands;
 
+import com.editor.application.view.tree.ConsoleTreeView;
+import com.editor.application.view.tree.FileNodeAdapter;
+import com.editor.application.view.tree.TreeNode;
 import com.editor.interfaces.Command;
 import java.io.File;
 
@@ -17,18 +20,11 @@ public class DirTreeCommand implements Command {
             System.out.println("Path not found: " + rootPath);
             return;
         }
-        printTree(root, "", true);
-    }
 
-    // 递归打印树
-    private void printTree(File node, String prefix, boolean isLast) {
-        System.out.println(prefix + (isLast ? "└── " : "├── ") + node.getName());
-
-        File[] children = node.listFiles();
-        if (children == null) return;
-
-        for (int i = 0; i < children.length; i++) {
-            printTree(children[i], prefix + (isLast ? "    " : "│   "), i == children.length - 1);
-        }
+        // --- 重构后 ---
+        // 1. 适配
+        TreeNode treeRoot = new FileNodeAdapter(root);
+        // 2. 渲染
+        new ConsoleTreeView().print(treeRoot);
     }
 }
